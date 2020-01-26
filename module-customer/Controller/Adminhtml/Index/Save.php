@@ -14,7 +14,6 @@ use Magento\Framework\Api\DataObjectHelper;
 use Magento\Customer\Api\Data\AddressInterfaceFactory;
 use Magento\Customer\Api\Data\CustomerInterfaceFactory;
 use Magento\Framework\DataObjectFactory as ObjectFactory;
-use Magento\Framework\App\Action\HttpPostActionInterface as HttpPostActionInterface;
 use Magento\Customer\Api\AddressMetadataInterface;
 use Magento\Customer\Api\CustomerMetadataInterface;
 use Magento\Customer\Api\Data\CustomerInterface;
@@ -22,15 +21,14 @@ use Magento\Customer\Controller\RegistryConstants;
 use Magento\Customer\Model\EmailNotificationInterface;
 use Magento\Customer\Model\Metadata\Form;
 use Magento\Framework\Exception\LocalizedException;
-use Magento\Framework\Exception\NoSuchEntityException;
 use Magento\Framework\App\ObjectManager;
 
 /**
- * Save customer action.
+ * Class to Save customer.
  *
  * @SuppressWarnings(PHPMD.CouplingBetweenObjects)
  */
-class Save extends \Magento\Customer\Controller\Adminhtml\Index implements HttpPostActionInterface
+class Save extends \Magento\Customer\Controller\Adminhtml\Index
 {
     /**
      * @var EmailNotificationInterface
@@ -43,8 +41,6 @@ class Save extends \Magento\Customer\Controller\Adminhtml\Index implements HttpP
     private $addressRegistry;
 
     /**
-     * Constructor
-     *
      * @param \Magento\Backend\App\Action\Context $context
      * @param \Magento\Framework\Registry $coreRegistry
      * @param \Magento\Framework\App\Response\Http\FileFactory $fileFactory
@@ -215,7 +211,6 @@ class Save extends \Magento\Customer\Controller\Adminhtml\Index implements HttpP
     /**
      * Saves default_billing and default_shipping flags for customer address
      *
-     * @deprecated 102.0.1 must be removed because addresses are save separately for now
      * @param array $addressIdList
      * @param array $extractedCustomerData
      * @return array
@@ -258,7 +253,6 @@ class Save extends \Magento\Customer\Controller\Adminhtml\Index implements HttpP
     /**
      * Reformat customer addresses data to be compatible with customer service interface
      *
-     * @deprecated 102.0.1 addresses are saved separately for now
      * @param array $extractedCustomerData
      * @return array
      */
@@ -279,7 +273,7 @@ class Save extends \Magento\Customer\Controller\Adminhtml\Index implements HttpP
     }
 
     /**
-     * Save customer action
+     * Save customer action.
      *
      * @return \Magento\Backend\Model\View\Result\Redirect
      * @SuppressWarnings(PHPMD.CyclomaticComplexity)
@@ -295,6 +289,7 @@ class Save extends \Magento\Customer\Controller\Adminhtml\Index implements HttpP
             try {
                 // optional fields might be set in request for future processing by observers in other modules
                 $customerData = $this->_extractCustomerData();
+                $addressesData = $this->_extractCustomerAddressData($customerData);
 
                 if ($customerId) {
                     $currentCustomer = $this->_customerRepository->getById($customerId);
@@ -314,12 +309,28 @@ class Save extends \Magento\Customer\Controller\Adminhtml\Index implements HttpP
                     $customerData,
                     \Magento\Customer\Api\Data\CustomerInterface::class
                 );
+                $addresses = [];
+                foreach ($addressesData as $addressData) {
+                    $region = isset($addressData['region']) ? $addressData['region'] : null;
+                    $regionId = isset($addressData['region_id']) ? $addressData['region_id'] : null;
+                    $addressData['region'] = [
+                        'region' => $region,
+                        'region_id' => $regionId,
+                    ];
+                    $addressDataObject = $this->addressDataFactory->create();
+                    $this->dataObjectHelper->populateWithArray(
+                        $addressDataObject,
+                        $addressData,
+                        \Magento\Customer\Api\Data\AddressInterface::class
+                    );
+                    $addresses[] = $addressDataObject;
+                }
 
                 $this->_eventManager->dispatch(
                     'adminhtml_customer_prepare_save',
                     ['customer' => $customer, 'request' => $this->getRequest()]
                 );
-
+                $customer->setAddresses($addresses);
                 if (isset($customerData['sendemail_store_id'])) {
                     $customer->setStoreId($customerData['sendemail_store_id']);
                 }
@@ -400,6 +411,7 @@ class Save extends \Magento\Customer\Controller\Adminhtml\Index implements HttpP
         } else {
             $resultRedirect->setPath('customer/index');
         }
+
         return $resultRedirect;
     }
 
@@ -479,9 +491,9 @@ class Save extends \Magento\Customer\Controller\Adminhtml\Index implements HttpP
      * Disable Customer Address Validation
      *
      * @param CustomerInterface $customer
-     * @throws NoSuchEntityException
+     * @return void
      */
-    private function disableAddressValidation($customer)
+    private function disableAddressValidation(CustomerInterface $customer)
     {
         foreach ($customer->getAddresses() as $address) {
             $addressModel = $this->addressRegistry->retrieve($address->getId());

@@ -7,7 +7,7 @@
 /* @var $block \Magento\Customer\Block\CustomerScopeData */
 ?>
 <script type="text/x-magento-init">
-<?= /* @noEscape */ $block->encodeConfiguration([
+<?= /* @noEscape */ \Magento\Framework\Serialize\JsonConverter::convert([
         '*' => ['Magento_Customer/js/invalidation-processor' => [
             'invalidationRules' => [
                 'website-rule' => [

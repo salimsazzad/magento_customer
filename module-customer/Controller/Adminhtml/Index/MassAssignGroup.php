@@ -5,8 +5,7 @@
  */
 namespace Magento\Customer\Controller\Adminhtml\Index;
 
-use Magento\Customer\Model\Customer;
-use Magento\Framework\App\Action\HttpPostActionInterface as HttpPostActionInterface;
+use Magento\Customer\Api\Data\CustomerInterface;
 use Magento\Backend\App\Action\Context;
 use Magento\Customer\Model\ResourceModel\Customer\CollectionFactory;
 use Magento\Eav\Model\Entity\Collection\AbstractCollection;
@@ -15,9 +14,9 @@ use Magento\Customer\Api\CustomerRepositoryInterface;
 use Magento\Framework\Controller\ResultFactory;
 
 /**
- * Class MassAssignGroup
+ * Class to execute MassAssignGroup action.
  */
-class MassAssignGroup extends AbstractMassAction implements HttpPostActionInterface
+class MassAssignGroup extends AbstractMassAction
 {
     /**
      * @var CustomerRepositoryInterface
@@ -41,7 +40,7 @@ class MassAssignGroup extends AbstractMassAction implements HttpPostActionInterf
     }
 
     /**
-     * Customer mass assign group action
+     * Customer mass assign group action.
      *
      * @param AbstractCollection $collection
      * @return \Magento\Backend\Model\View\Result\Redirect
@@ -70,12 +69,12 @@ class MassAssignGroup extends AbstractMassAction implements HttpPostActionInterf
     }
 
     /**
-     * Set ignore_validation_flag to skip unnecessary address and customer validation
+     * Set ignore_validation_flag to skip unnecessary address and customer validation.
      *
-     * @param Customer $customer
+     * @param CustomerInterface $customer
      * @return void
      */
-    private function setIgnoreValidationFlag($customer)
+    private function setIgnoreValidationFlag(CustomerInterface $customer)
     {
         $customer->setData('ignore_validation_flag', true);
     }

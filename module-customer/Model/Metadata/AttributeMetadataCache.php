@@ -66,7 +66,7 @@ class AttributeMetadataCache
      * @param StateInterface $state
      * @param SerializerInterface $serializer
      * @param AttributeMetadataHydrator $attributeMetadataHydrator
-     * @param StoreManagerInterface $storeManager
+     * @param StoreManagerInterface|null $storeManager
      */
     public function __construct(
         CacheInterface $cache,

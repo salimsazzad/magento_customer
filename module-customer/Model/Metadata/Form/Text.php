@@ -11,9 +11,6 @@ namespace Magento\Customer\Model\Metadata\Form;
 use Magento\Customer\Api\Data\AttributeMetadataInterface;
 use Magento\Framework\Api\ArrayObjectSearch;
 
-/**
- * Form Text metadata
- */
 class Text extends AbstractData
 {
     /**
@@ -46,7 +43,7 @@ class Text extends AbstractData
     }
 
     /**
-     * @inheritdoc
+     * {@inheritdoc}
      */
     public function extractValue(\Magento\Framework\App\RequestInterface $request)
     {
@@ -54,7 +51,9 @@ class Text extends AbstractData
     }
 
     /**
-     * @inheritdoc
+     * {@inheritdoc}
+     * @SuppressWarnings(PHPMD.CyclomaticComplexity)
+     * @SuppressWarnings(PHPMD.NPathComplexity)
      */
     public function validateValue($value)
     {
@@ -67,12 +66,12 @@ class Text extends AbstractData
             $value = $this->_value;
         }
 
-        if (!$attribute->isRequired() && empty($value)) {
-            return true;
+        if ($attribute->isRequired() && empty($value) && $value !== '0') {
+            $errors[] = __('"%1" is a required value.', $label);
         }
 
-        if (empty($value) && $value !== '0') {
-            $errors[] = __('"%1" is a required value.', $label);
+        if (!$errors && !$attribute->isRequired() && empty($value)) {
+            return true;
         }
 
         $errors = $this->validateLength($value, $attribute, $errors);
@@ -81,7 +80,6 @@ class Text extends AbstractData
         if ($result !== true) {
             $errors = array_merge($errors, $result);
         }
-
         if (count($errors) == 0) {
             return true;
         }
@@ -90,7 +88,7 @@ class Text extends AbstractData
     }
 
     /**
-     * @inheritdoc
+     * {@inheritdoc}
      */
     public function compactValue($value)
     {
@@ -98,7 +96,7 @@ class Text extends AbstractData
     }
 
     /**
-     * @inheritdoc
+     * {@inheritdoc}
      */
     public function restoreValue($value)
     {
@@ -106,7 +104,7 @@ class Text extends AbstractData
     }
 
     /**
-     * @inheritdoc
+     * {@inheritdoc}
      */
     public function outputValue($format = \Magento\Customer\Model\Metadata\ElementFactory::OUTPUT_FORMAT_TEXT)
     {
@@ -121,7 +119,7 @@ class Text extends AbstractData
      * @param array $errors
      * @return array
      */
-    private function validateLength($value, AttributeMetadataInterface $attribute, array $errors): array
+    protected function validateLength($value, AttributeMetadataInterface $attribute, array $errors): array
     {
         // validate length
         $label = __($attribute->getStoreLabel());

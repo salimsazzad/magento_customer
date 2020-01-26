@@ -7,12 +7,12 @@
 namespace Magento\Customer\Model\ResourceModel\Customer;
 
 /**
- * Class Relation
+ * Class to process object relations.
  */
 class Relation implements \Magento\Framework\Model\ResourceModel\Db\VersionControl\RelationInterface
 {
     /**
-     * Save relations for Customer
+     * Save relations for Customer.
      *
      * @param \Magento\Framework\Model\AbstractModel $customer
      * @return void

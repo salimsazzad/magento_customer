@@ -10,7 +10,7 @@ use Magento\Customer\Ui\Component\Listing\Column\InlineEditUpdater;
 use Magento\Customer\Api\CustomerMetadataInterface;
 
 /**
- * Class ColumnFactory. Responsible for the column object generation
+ * Class ColumnFactory. Responsible for the column object generation.
  */
 class ColumnFactory
 {
@@ -58,7 +58,7 @@ class ColumnFactory
     }
 
     /**
-     * Creates column object for grid ui component
+     * Creates column object for grid ui component.
      *
      * @param array $attributeData
      * @param string $columnName
@@ -68,19 +68,14 @@ class ColumnFactory
      */
     public function create(array $attributeData, $columnName, $context, array $config = [])
     {
-        $config = array_merge(
-            [
-                'label' => __($attributeData[AttributeMetadata::FRONTEND_LABEL]),
-                'dataType' => $this->getDataType($attributeData[AttributeMetadata::FRONTEND_INPUT]),
-                'align' => 'left',
-                'visible' => (bool)$attributeData[AttributeMetadata::IS_VISIBLE_IN_GRID],
-                'component' => $this->getJsComponent(
-                    $this->getDataType($attributeData[AttributeMetadata::FRONTEND_INPUT])
-                ),
-                '__disableTmpl' => 'true'
-            ],
-            $config
-        );
+        $config = array_merge([
+            'label' => __($attributeData[AttributeMetadata::FRONTEND_LABEL]),
+            'dataType' => $this->getDataType($attributeData[AttributeMetadata::FRONTEND_INPUT]),
+            'align' => 'left',
+            'visible' => (bool)$attributeData[AttributeMetadata::IS_VISIBLE_IN_GRID],
+            'component' => $this->getJsComponent($this->getDataType($attributeData[AttributeMetadata::FRONTEND_INPUT])),
+            '__disableTmpl' => 'true',
+        ], $config);
         if ($attributeData[AttributeMetadata::FRONTEND_INPUT] == 'date') {
             $config['dateFormat'] = 'MMM d, y';
             $config['timezone'] = false;
@@ -112,7 +107,7 @@ class ColumnFactory
     }
 
     /**
-     * Returns component map
+     * Returns component map.
      *
      * @param string $dataType
      * @return string
@@ -123,7 +118,7 @@ class ColumnFactory
     }
 
     /**
-     * Returns component map depends on data type
+     * Returns component map depends on data type.
      *
      * @param string $frontendType
      * @return string

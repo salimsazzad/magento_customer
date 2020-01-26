@@ -7,7 +7,6 @@
 
 namespace Magento\Customer\Controller\Adminhtml\Customer;
 
-use Magento\Framework\App\Action\HttpGetActionInterface;
 use Magento\Integration\Api\CustomerTokenServiceInterface;
 use Magento\Customer\Api\AccountManagementInterface;
 use Magento\Customer\Api\AddressRepositoryInterface;
@@ -26,15 +25,8 @@ use Magento\Framework\Api\DataObjectHelper;
  * @SuppressWarnings(PHPMD.TooManyFields)
  * @SuppressWarnings(PHPMD.NumberOfChildren)
  */
-class InvalidateToken extends \Magento\Customer\Controller\Adminhtml\Index implements HttpGetActionInterface
+class InvalidateToken extends \Magento\Customer\Controller\Adminhtml\Index
 {
-    /**
-     * Authorization level of a basic admin session
-     *
-     * @see _isAllowed()
-     */
-    const ADMIN_RESOURCE = 'Magento_Customer::invalidate_tokens';
-
     /**
      * @var CustomerTokenServiceInterface
      */

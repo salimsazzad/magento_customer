@@ -13,7 +13,7 @@ use Magento\Customer\Model\ResourceModel\Address\DeleteRelation;
 use Magento\Framework\App\ObjectManager;
 
 /**
- * Class Address
+ * Customer Address resource model.
  *
  * @package Magento\Customer\Model\ResourceModel
  * @SuppressWarnings(PHPMD.CouplingBetweenObjects)
@@ -91,7 +91,7 @@ class Address extends \Magento\Eav\Model\Entity\VersionControl\AbstractEntity
     }
 
     /**
-     * Validate customer address entity
+     * Validate customer address entity.
      *
      * @param \Magento\Framework\DataObject $address
      * @return void
@@ -114,7 +114,7 @@ class Address extends \Magento\Eav\Model\Entity\VersionControl\AbstractEntity
     }
 
     /**
-     * @inheritdoc
+     * {@inheritdoc}
      */
     public function delete($object)
     {
@@ -124,9 +124,7 @@ class Address extends \Magento\Eav\Model\Entity\VersionControl\AbstractEntity
     }
 
     /**
-     * Get instance of DeleteRelation class
-     *
-     * @deprecated 101.0.0
+     * @deprecated 100.2.0
      * @return DeleteRelation
      */
     private function getDeleteRelation()
@@ -135,9 +133,7 @@ class Address extends \Magento\Eav\Model\Entity\VersionControl\AbstractEntity
     }
 
     /**
-     * Get instance of CustomerRegistry class
-     *
-     * @deprecated 101.0.0
+     * @deprecated 100.2.0
      * @return CustomerRegistry
      */
     private function getCustomerRegistry()
@@ -146,8 +142,6 @@ class Address extends \Magento\Eav\Model\Entity\VersionControl\AbstractEntity
     }
 
     /**
-     * After delete entity process
-     *
      * @param \Magento\Customer\Model\Address $address
      * @return $this
      */

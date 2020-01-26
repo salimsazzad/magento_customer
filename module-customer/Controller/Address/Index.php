@@ -6,13 +6,12 @@
  */
 namespace Magento\Customer\Controller\Address;
 
-use Magento\Framework\App\Action\HttpGetActionInterface as HttpGetActionInterface;
 use Magento\Customer\Api\CustomerRepositoryInterface;
 
 /**
  * @SuppressWarnings(PHPMD.CouplingBetweenObjects)
  */
-class Index extends \Magento\Customer\Controller\Address implements HttpGetActionInterface
+class Index extends \Magento\Customer\Controller\Address
 {
     /**
      * @var CustomerRepositoryInterface

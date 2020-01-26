@@ -93,7 +93,7 @@ class CustomerNotification
                 $customer = $this->customerRepository->getById($customerId);
                 $this->session->setCustomerData($customer);
                 $this->session->setCustomerGroupId($customer->getGroupId());
-                $this->notificationStorage->remove(NotificationStorage::UPDATE_CUSTOMER_SESSION, $customer->getId());
+                $this->notificationStorage->remove(NotificationStorage::UPDATE_CUSTOMER_SESSION, $customerId);
             } catch (NoSuchEntityException $e) {
                 $this->logger->error($e);
             }

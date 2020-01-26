@@ -7,12 +7,12 @@
 namespace Magento\Customer\Model\ResourceModel;
 
 use Magento\Customer\Api\CustomerMetadataInterface;
-use Magento\Customer\Api\Data\CustomerInterface;
 use Magento\Customer\Api\Data\CustomerSearchResultsInterfaceFactory;
 use Magento\Framework\Api\ExtensibleDataObjectConverter;
 use Magento\Framework\Api\ExtensionAttribute\JoinProcessorInterface;
 use Magento\Customer\Model\CustomerFactory;
 use Magento\Customer\Model\CustomerRegistry;
+use \Magento\Customer\Model\Customer as CustomerModel;
 use Magento\Customer\Model\Data\CustomerSecureFactory;
 use Magento\Customer\Model\Customer\NotificationStorage;
 use Magento\Customer\Model\Delegation\Data\NewOperation;
@@ -171,21 +171,17 @@ class CustomerRepository implements CustomerRepositoryInterface
     }
 
     /**
-     * Create or update a customer.
+     * @inheritdoc
      *
-     * @param \Magento\Customer\Api\Data\CustomerInterface $customer
-     * @param string $passwordHash
-     * @return \Magento\Customer\Api\Data\CustomerInterface
-     * @throws \Magento\Framework\Exception\InputException If bad input is provided
-     * @throws \Magento\Framework\Exception\State\InputMismatchException If the provided email is already used
-     * @throws \Magento\Framework\Exception\LocalizedException
      * @SuppressWarnings(PHPMD.CyclomaticComplexity)
      * @SuppressWarnings(PHPMD.NPathComplexity)
+     * @SuppressWarnings(PHPMD.ExcessiveMethodLength)
      */
-    public function save(CustomerInterface $customer, $passwordHash = null)
+    public function save(\Magento\Customer\Api\Data\CustomerInterface $customer, $passwordHash = null)
     {
         /** @var NewOperation|null $delegatedNewOperation */
-        $delegatedNewOperation = !$customer->getId() ? $this->delegatedStorage->consumeNewOperation() : null;
+        $delegatedNewOperation = !$customer->getId()
+            ? $this->delegatedStorage->consumeNewOperation() : null;
         $prevCustomerData = null;
         $prevCustomerDataArr = null;
         if ($customer->getId()) {
@@ -199,27 +195,36 @@ class CustomerRepository implements CustomerRepositoryInterface
             CustomerMetadataInterface::ENTITY_TYPE_CUSTOMER,
             $prevCustomerData
         );
+
         $origAddresses = $customer->getAddresses();
         $customer->setAddresses([]);
-        $customerData = $this->extensibleDataObjectConverter->toNestedArray($customer, [], CustomerInterface::class);
+        $customerData = $this->extensibleDataObjectConverter->toNestedArray(
+            $customer,
+            [],
+            \Magento\Customer\Api\Data\CustomerInterface::class
+        );
         $customer->setAddresses($origAddresses);
         /** @var Customer $customerModel */
-        $customerModel = $this->customerFactory->create(['data' => $customerData]);
-        //Model's actual ID field maybe different than "id" so "id" field from $customerData may be ignored.
+        $customerModel = $this->customerFactory->create(
+            ['data' => $customerData]
+        );
+        //Model's actual ID field maybe different than "id"
+        //so "id" field from $customerData may be ignored.
         $customerModel->setId($customer->getId());
+
         $storeId = $customerModel->getStoreId();
         if ($storeId === null) {
             $customerModel->setStoreId(
                 $prevCustomerData ? $prevCustomerData->getStoreId() : $this->storeManager->getStore()->getId()
             );
         }
-        // Need to use attribute set or future updates can cause data loss
-        if (!$customerModel->getAttributeSetId()) {
-            $customerModel->setAttributeSetId(CustomerMetadataInterface::ATTRIBUTE_SET_ID_CUSTOMER);
-        }
+
         $this->populateCustomerWithSecureData($customerModel, $passwordHash);
+
         // If customer email was changed, reset RpToken info
-        if ($prevCustomerData && $prevCustomerData->getEmail() !== $customerModel->getEmail()) {
+        if ($prevCustomerData
+            && $prevCustomerData->getEmail() !== $customerModel->getEmail()
+        ) {
             $customerModel->setRpToken(null);
             $customerModel->setRpTokenCreatedAt(null);
         }
@@ -227,23 +232,30 @@ class CustomerRepository implements CustomerRepositoryInterface
             && null !== $prevCustomerDataArr
             && array_key_exists('default_billing', $prevCustomerDataArr)
         ) {
-            $customerModel->setDefaultBilling($prevCustomerDataArr['default_billing']);
+            $customerModel->setDefaultBilling(
+                $prevCustomerDataArr['default_billing']
+            );
         }
         if (!array_key_exists('addresses', $customerArr)
             && null !== $prevCustomerDataArr
             && array_key_exists('default_shipping', $prevCustomerDataArr)
         ) {
-            $customerModel->setDefaultShipping($prevCustomerDataArr['default_shipping']);
+            $customerModel->setDefaultShipping(
+                $prevCustomerDataArr['default_shipping']
+            );
         }
-        $this->setValidationFlag($customerArr, $customerModel);
+        $this->setIgnoreValidationFlag($customerArr, $customerModel);
         $customerModel->save();
         $this->customerRegistry->push($customerModel);
         $customerId = $customerModel->getId();
+
         if (!$customer->getAddresses()
             && $delegatedNewOperation
             && $delegatedNewOperation->getCustomer()->getAddresses()
         ) {
-            $customer->setAddresses($delegatedNewOperation->getCustomer()->getAddresses());
+            $customer->setAddresses(
+                $delegatedNewOperation->getCustomer()->getAddresses()
+            );
         }
         if ($customer->getAddresses() !== null && !$customerModel->getData('ignore_validation_flag')) {
             if ($customer->getId()) {
@@ -271,14 +283,17 @@ class CustomerRepository implements CustomerRepositoryInterface
         }
         $this->customerRegistry->remove($customerId);
         $savedCustomer = $this->get($customer->getEmail(), $customer->getWebsiteId());
+
         $this->eventManager->dispatch(
             'customer_save_after_data_object',
             [
                 'customer_data_object' => $savedCustomer,
                 'orig_customer_data_object' => $prevCustomerData,
-                'delegate_data' => $delegatedNewOperation ? $delegatedNewOperation->getAdditionalData() : [],
+                'delegate_data' => $delegatedNewOperation
+                    ? $delegatedNewOperation->getAdditionalData() : []
             ]
         );
+
         return $savedCustomer;
     }
 
@@ -312,13 +327,7 @@ class CustomerRepository implements CustomerRepositoryInterface
     }
 
     /**
-     * Retrieve customer.
-     *
-     * @param string $email
-     * @param int|null $websiteId
-     * @return \Magento\Customer\Api\Data\CustomerInterface
-     * @throws \Magento\Framework\Exception\NoSuchEntityException If customer with the specified email does not exist.
-     * @throws \Magento\Framework\Exception\LocalizedException
+     * {@inheritdoc}
      */
     public function get($email, $websiteId = null)
     {
@@ -327,12 +336,7 @@ class CustomerRepository implements CustomerRepositoryInterface
     }
 
     /**
-     * Get customer by Customer ID.
-     *
-     * @param int $customerId
-     * @return \Magento\Customer\Api\Data\CustomerInterface
-     * @throws \Magento\Framework\Exception\NoSuchEntityException If customer with the specified ID does not exist.
-     * @throws \Magento\Framework\Exception\LocalizedException
+     * {@inheritdoc}
      */
     public function getById($customerId)
     {
@@ -341,15 +345,7 @@ class CustomerRepository implements CustomerRepositoryInterface
     }
 
     /**
-     * Retrieve customers which match a specified criteria.
-     *
-     * This call returns an array of objects, but detailed information about each object’s attributes might not be
-     * included. See https://devdocs.magento.com/codelinks/attributes.html#CustomerRepositoryInterface to determine
-     * which call to use to get detailed information about all attributes for an object.
-     *
-     * @param \Magento\Framework\Api\SearchCriteriaInterface $searchCriteria
-     * @return \Magento\Customer\Api\Data\CustomerSearchResultsInterface
-     * @throws \Magento\Framework\Exception\LocalizedException
+     * {@inheritdoc}
      */
     public function getList(SearchCriteriaInterface $searchCriteria)
     {
@@ -359,7 +355,7 @@ class CustomerRepository implements CustomerRepositoryInterface
         $collection = $this->customerFactory->create()->getCollection();
         $this->extensionAttributesJoinProcessor->process(
             $collection,
-            CustomerInterface::class
+            \Magento\Customer\Api\Data\CustomerInterface::class
         );
         // This is needed to make sure all the attributes are properly loaded
         foreach ($this->customerMetadata->getAllAttributesMetadata() as $metadata) {
@@ -389,24 +385,15 @@ class CustomerRepository implements CustomerRepositoryInterface
     }
 
     /**
-     * Delete customer.
-     *
-     * @param \Magento\Customer\Api\Data\CustomerInterface $customer
-     * @return bool true on success
-     * @throws \Magento\Framework\Exception\LocalizedException
+     * {@inheritdoc}
      */
-    public function delete(CustomerInterface $customer)
+    public function delete(\Magento\Customer\Api\Data\CustomerInterface $customer)
     {
         return $this->deleteById($customer->getId());
     }
 
     /**
-     * Delete customer by Customer ID.
-     *
-     * @param int $customerId
-     * @return bool true on success
-     * @throws \Magento\Framework\Exception\NoSuchEntityException
-     * @throws \Magento\Framework\Exception\LocalizedException
+     * {@inheritdoc}
      */
     public function deleteById($customerId)
     {
@@ -421,7 +408,7 @@ class CustomerRepository implements CustomerRepositoryInterface
     /**
      * Helper function that adds a FilterGroup to the collection.
      *
-     * @deprecated 101.0.0
+     * @deprecated 100.2.0
      * @param FilterGroup $filterGroup
      * @param Collection $collection
      * @return void
@@ -439,13 +426,13 @@ class CustomerRepository implements CustomerRepositoryInterface
     }
 
     /**
-     * Set ignore_validation_flag to skip model validation
+     * Set ignore_validation_flag to skip model validation.
      *
      * @param array $customerArray
-     * @param Customer $customerModel
+     * @param CustomerModel $customerModel
      * @return void
      */
-    private function setValidationFlag($customerArray, $customerModel)
+    private function setIgnoreValidationFlag(array $customerArray, CustomerModel $customerModel)
     {
         if (isset($customerArray['ignore_validation_flag'])) {
             $customerModel->setData('ignore_validation_flag', true);

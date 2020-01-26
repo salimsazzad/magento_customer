@@ -3,7 +3,6 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
-
 namespace Magento\Customer\Model\ResourceModel;
 
 use Magento\Customer\Model\Customer\NotificationStorage;
@@ -12,7 +11,7 @@ use Magento\Framework\Validator\Exception as ValidatorException;
 use Magento\Framework\Exception\AlreadyExistsException;
 
 /**
- * Customer entity resource model
+ * Customer entity resource model.
  *
  * @api
  * @SuppressWarnings(PHPMD.CouplingBetweenObjects)
@@ -93,14 +92,11 @@ class Customer extends \Magento\Eav\Model\Entity\VersionControl\AbstractEntity
     }
 
     /**
-     * Check customer scope, email and confirmation key before saving
+     * Check customer scope, email and confirmation key before saving.
      *
-     * @param \Magento\Framework\DataObject|\Magento\Customer\Api\Data\CustomerInterface $customer
-     *
+     * @param \Magento\Framework\DataObject $customer
      * @return $this
-     * @throws AlreadyExistsException
-     * @throws ValidatorException
-     * @throws \Magento\Framework\Exception\NoSuchEntityException
+     * @throws \Magento\Framework\Exception\LocalizedException
      * @SuppressWarnings(PHPMD.CyclomaticComplexity)
      * @SuppressWarnings(PHPMD.NPathComplexity)
      */
@@ -115,7 +111,7 @@ class Customer extends \Magento\Eav\Model\Entity\VersionControl\AbstractEntity
         parent::_beforeSave($customer);
 
         if (!$customer->getEmail()) {
-            throw new ValidatorException(__('The customer email is missing. Enter and try again.'));
+            throw new ValidatorException(__('Please enter a customer email.'));
         }
 
         $connection = $this->getConnection();
@@ -139,12 +135,14 @@ class Customer extends \Magento\Eav\Model\Entity\VersionControl\AbstractEntity
         $result = $connection->fetchOne($select, $bind);
         if ($result) {
             throw new AlreadyExistsException(
-                __('A customer with the same email address already exists in an associated website.')
+                __('A customer with the same email already exists in an associated website.')
             );
         }
 
         // set confirmation key logic
-        if (!$customer->getId() && $customer->isConfirmationRequired()) {
+        if ($customer->getForceConfirmed() || $customer->getPasswordHash() == '') {
+            $customer->setConfirmation(null);
+        } elseif (!$customer->getId() && $customer->isConfirmationRequired()) {
             $customer->setConfirmation($customer->getRandomConfirmationKey());
         }
         // remove customer confirmation key from database, if empty
@@ -164,7 +162,7 @@ class Customer extends \Magento\Eav\Model\Entity\VersionControl\AbstractEntity
      *
      * @param \Magento\Customer\Model\Customer $customer
      * @return void
-     * @throws ValidatorException
+     * @throws \Magento\Framework\Validator\Exception
      */
     protected function _validate($customer)
     {
@@ -246,7 +244,7 @@ class Customer extends \Magento\Eav\Model\Entity\VersionControl\AbstractEntity
         if ($customer->getSharingConfig()->isWebsiteScope()) {
             if (!$customer->hasData('website_id')) {
                 throw new \Magento\Framework\Exception\LocalizedException(
-                    __("A customer website ID wasn't specified. The ID must be specified to use the website scope.")
+                    __('A customer website ID must be specified when using the website scope.')
                 );
             }
             $bind['website_id'] = (int)$customer->getWebsiteId();

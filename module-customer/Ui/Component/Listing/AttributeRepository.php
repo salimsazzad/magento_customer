@@ -72,7 +72,7 @@ class AttributeRepository
     }
 
     /**
-     * Returns attribute list for current customer
+     * Returns attribute list for current customer.
      *
      * @return array
      */
@@ -98,7 +98,7 @@ class AttributeRepository
     }
 
     /**
-     * Returns attribute list for given entity type code
+     * Returns attribute list for given entity type code.
      *
      * @param AttributeMetadataInterface[] $metadata
      * @param string $entityTypeCode
@@ -146,14 +146,15 @@ class AttributeRepository
             $option = [
                 'label' => (string)$option->getLabel(),
                 'value' => $option->getValue(),
-                '__disableTmpl' => true
+                '__disableTmpl' => true,
             ];
         }
+
         return $options;
     }
 
     /**
-     * Return customer group's metadata by given group code
+     * Return customer group's metadata by given group code.
      *
      * @param string $code
      * @return []

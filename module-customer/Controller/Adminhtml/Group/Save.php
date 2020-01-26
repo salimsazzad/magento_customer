@@ -1,19 +1,17 @@
 <?php
 /**
+ *
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
 namespace Magento\Customer\Controller\Adminhtml\Group;
 
-use Magento\Framework\App\Action\HttpPostActionInterface as HttpPostActionInterface;
 use Magento\Customer\Api\Data\GroupInterfaceFactory;
 use Magento\Customer\Api\Data\GroupInterface;
 use Magento\Customer\Api\GroupRepositoryInterface;
+use Magento\Framework\Exception\NotFoundException;
 
-/**
- * Controller class Save. Performs save action of customers group
- */
-class Save extends \Magento\Customer\Controller\Adminhtml\Group implements HttpPostActionInterface
+class Save extends \Magento\Customer\Controller\Adminhtml\Group
 {
     /**
      * @var \Magento\Framework\Reflection\DataObjectProcessor
@@ -69,9 +67,14 @@ class Save extends \Magento\Customer\Controller\Adminhtml\Group implements HttpP
      * Create or save customer group.
      *
      * @return \Magento\Backend\Model\View\Result\Redirect|\Magento\Backend\Model\View\Result\Forward
+     * @throws NotFoundException
      */
     public function execute()
     {
+        if (!$this->getRequest()->isPost()) {
+            throw new NotFoundException(__('Page not found'));
+        }
+
         $taxClass = (int)$this->getRequest()->getParam('tax_class');
 
         /** @var \Magento\Customer\Api\Data\GroupInterface $customerGroup */
@@ -81,7 +84,6 @@ class Save extends \Magento\Customer\Controller\Adminhtml\Group implements HttpP
             $resultRedirect = $this->resultRedirectFactory->create();
             try {
                 $customerGroupCode = (string)$this->getRequest()->getParam('code');
-
                 if ($id !== null) {
                     $customerGroup = $this->groupRepository->getById((int)$id);
                     $customerGroupCode = $customerGroupCode ?: $customerGroup->getCode();

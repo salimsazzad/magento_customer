@@ -17,7 +17,6 @@ use Magento\Customer\Model\ResourceModel\Customer as ResourceCustomer;
  * @api
  * @method string getNoReferer()
  * @SuppressWarnings(PHPMD.CouplingBetweenObjects)
- * @SuppressWarnings(PHPMD.CookieAndSessionMisuse)
  * @since 100.0.2
  */
 class Session extends \Magento\Framework\Session\SessionManager

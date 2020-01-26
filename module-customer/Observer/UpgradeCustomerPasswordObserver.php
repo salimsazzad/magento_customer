@@ -6,14 +6,14 @@
 
 namespace Magento\Customer\Observer;
 
-use Magento\Customer\Model\Customer;
+use Magento\Customer\Api\Data\CustomerInterface;
 use Magento\Framework\Encryption\EncryptorInterface;
 use Magento\Framework\Event\ObserverInterface;
 use Magento\Customer\Api\CustomerRepositoryInterface;
 use Magento\Customer\Model\CustomerRegistry;
 
 /**
- * Class observer UpgradeCustomerPasswordObserver to upgrade customer password hash when customer has logged in
+ * Observer to execute upgrading customer password hash when customer has logged in.
  */
 class UpgradeCustomerPasswordObserver implements ObserverInterface
 {
@@ -50,7 +50,7 @@ class UpgradeCustomerPasswordObserver implements ObserverInterface
     }
 
     /**
-     * Upgrade customer password hash when customer has logged in
+     * Upgrade customer password hash when customer has logged in.
      *
      * @param \Magento\Framework\Event\Observer $observer
      * @return void
@@ -72,12 +72,12 @@ class UpgradeCustomerPasswordObserver implements ObserverInterface
     }
 
     /**
-     * Set ignore_validation_flag to skip unnecessary address and customer validation
+     * Set ignore_validation_flag to skip unnecessary address and customer validation.
      *
-     * @param Customer $customer
+     * @param CustomerInterface $customer
      * @return void
      */
-    private function setIgnoreValidationFlag($customer)
+    private function setIgnoreValidationFlag(CustomerInterface $customer)
     {
         $customer->setData('ignore_validation_flag', true);
     }

@@ -5,11 +5,14 @@
  */
 namespace Magento\Customer\Model\Customer;
 
+use Magento\Customer\Api\AddressMetadataInterface;
+use Magento\Customer\Api\CustomerMetadataInterface;
 use Magento\Customer\Api\Data\AddressInterface;
 use Magento\Customer\Api\Data\CustomerInterface;
 use Magento\Customer\Model\Address;
 use Magento\Customer\Model\Attribute;
 use Magento\Customer\Model\Customer;
+use Magento\Customer\Model\FileProcessor;
 use Magento\Customer\Model\FileProcessorFactory;
 use Magento\Customer\Model\ResourceModel\Address\Attribute\Source\CountryWithWebsites;
 use Magento\Customer\Model\ResourceModel\Customer\Collection;
@@ -22,18 +25,13 @@ use Magento\Framework\App\ObjectManager;
 use Magento\Framework\Session\SessionManagerInterface;
 use Magento\Framework\View\Element\UiComponent\ContextInterface;
 use Magento\Framework\View\Element\UiComponent\DataProvider\FilterPool;
-use Magento\Ui\Component\Form\Element\Multiline;
 use Magento\Ui\Component\Form\Field;
 use Magento\Ui\DataProvider\EavValidationRules;
-use Magento\Customer\Model\FileUploaderDataResolver;
+use Magento\Ui\Component\Form\Element\Multiline;
 
 /**
- * Supplies the data for the customer UI component
- *
  * @SuppressWarnings(PHPMD.CouplingBetweenObjects)
- * @SuppressWarnings(PHPMD.TooManyFields)
  *
- * @deprecated 102.0.1 \Magento\Customer\Model\Customer\DataProviderWithDefaultAddresses is used instead
  * @api
  * @since 100.0.2
  */
@@ -112,6 +110,21 @@ class DataProvider extends \Magento\Ui\DataProvider\AbstractDataProvider
     protected $session;
 
     /**
+     * @var FileProcessorFactory
+     */
+    private $fileProcessorFactory;
+
+    /**
+     * File types allowed for file_uploader UI component
+     *
+     * @var array
+     */
+    private $fileUploaderTypes = [
+        'image',
+        'file',
+    ];
+
+    /**
      * Customer fields that must be removed
      *
      * @var array
@@ -135,11 +148,6 @@ class DataProvider extends \Magento\Ui\DataProvider\AbstractDataProvider
     private $allowToShowHiddenAttributes;
 
     /**
-     * @var FileUploaderDataResolver
-     */
-    private $fileUploaderDataResolver;
-
-    /**
      * @param string $name
      * @param string $primaryFieldName
      * @param string $requestFieldName
@@ -148,13 +156,11 @@ class DataProvider extends \Magento\Ui\DataProvider\AbstractDataProvider
      * @param Config $eavConfig
      * @param FilterPool $filterPool
      * @param FileProcessorFactory $fileProcessorFactory
+     * @param ContextInterface $context
      * @param array $meta
      * @param array $data
-     * @param ContextInterface $context
      * @param bool $allowToShowHiddenAttributes
-     * @param FileUploaderDataResolver|null $fileUploaderDataResolver
      * @SuppressWarnings(PHPMD.ExcessiveParameterList)
-     * @SuppressWarnings(PHPMD.UnusedFormalParameter)
      */
     public function __construct(
         $name,
@@ -168,8 +174,7 @@ class DataProvider extends \Magento\Ui\DataProvider\AbstractDataProvider
         array $meta = [],
         array $data = [],
         ContextInterface $context = null,
-        $allowToShowHiddenAttributes = true,
-        $fileUploaderDataResolver = null
+        $allowToShowHiddenAttributes = true
     ) {
         parent::__construct($name, $primaryFieldName, $requestFieldName, $meta, $data);
         $this->eavValidationRules = $eavValidationRules;
@@ -177,10 +182,9 @@ class DataProvider extends \Magento\Ui\DataProvider\AbstractDataProvider
         $this->collection->addAttributeToSelect('*');
         $this->eavConfig = $eavConfig;
         $this->filterPool = $filterPool;
+        $this->fileProcessorFactory = $fileProcessorFactory ?: $this->getFileProcessorFactory();
         $this->context = $context ?: ObjectManager::getInstance()->get(ContextInterface::class);
         $this->allowToShowHiddenAttributes = $allowToShowHiddenAttributes;
-        $this->fileUploaderDataResolver = $fileUploaderDataResolver
-            ?: ObjectManager::getInstance()->get(FileUploaderDataResolver::class);
         $this->meta['customer']['children'] = $this->getAttributesMeta(
             $this->eavConfig->getEntityType('customer')
         );
@@ -221,7 +225,7 @@ class DataProvider extends \Magento\Ui\DataProvider\AbstractDataProvider
         foreach ($items as $customer) {
             $result['customer'] = $customer->getData();
 
-            $this->fileUploaderDataResolver->overrideFileUploaderData($customer, $result['customer']);
+            $this->overrideFileUploaderData($customer, $result['customer']);
 
             $result['customer'] = array_diff_key(
                 $result['customer'],
@@ -236,7 +240,7 @@ class DataProvider extends \Magento\Ui\DataProvider\AbstractDataProvider
                 $result['address'][$addressId] = $address->getData();
                 $this->prepareAddressData($addressId, $result['address'], $result['customer']);
 
-                $this->fileUploaderDataResolver->overrideFileUploaderData($address, $result['address'][$addressId]);
+                $this->overrideFileUploaderData($address, $result['address'][$addressId]);
             }
             $this->loadedData[$customer->getId()] = $result;
         }
@@ -249,6 +253,75 @@ class DataProvider extends \Magento\Ui\DataProvider\AbstractDataProvider
         }
 
         return $this->loadedData;
+    }
+
+    /**
+     * Override file uploader UI component data
+     *
+     * Overrides data for attributes with frontend_input equal to 'image' or 'file'.
+     *
+     * @param Customer|Address $entity
+     * @param array $entityData
+     * @return void
+     */
+    private function overrideFileUploaderData($entity, array &$entityData)
+    {
+        $attributes = $entity->getAttributes();
+        foreach ($attributes as $attribute) {
+            /** @var Attribute $attribute */
+            if (in_array($attribute->getFrontendInput(), $this->fileUploaderTypes)) {
+                $entityData[$attribute->getAttributeCode()] = $this->getFileUploaderData(
+                    $entity->getEntityType(),
+                    $attribute,
+                    $entityData
+                );
+            }
+        }
+    }
+
+    /**
+     * Retrieve array of values required by file uploader UI component
+     *
+     * @param Type $entityType
+     * @param Attribute $attribute
+     * @param array $customerData
+     * @return array
+     * @SuppressWarnings(PHPMD.NPathComplexity)
+     */
+    private function getFileUploaderData(
+        Type $entityType,
+        Attribute $attribute,
+        array $customerData
+    ) {
+        $attributeCode = $attribute->getAttributeCode();
+
+        $file = isset($customerData[$attributeCode])
+            ? $customerData[$attributeCode]
+            : '';
+
+        /** @var FileProcessor $fileProcessor */
+        $fileProcessor = $this->getFileProcessorFactory()->create([
+            'entityTypeCode' => $entityType->getEntityTypeCode(),
+        ]);
+
+        if (!empty($file)
+            && $fileProcessor->isExist($file)
+        ) {
+            $stat = $fileProcessor->getStat($file);
+            $viewUrl = $fileProcessor->getViewUrl($file, $attribute->getFrontendInput());
+
+            return [
+                [
+                    'file' => $file,
+                    'size' => isset($stat) ? $stat['size'] : 0,
+                    'url' => isset($viewUrl) ? $viewUrl : '',
+                    'name' => basename($file),
+                    'type' => $fileProcessor->getMimeType($file),
+                ],
+            ];
+        }
+
+        return [];
     }
 
     /**
@@ -271,7 +344,12 @@ class DataProvider extends \Magento\Ui\DataProvider\AbstractDataProvider
             // use getDataUsingMethod, since some getters are defined and apply additional processing of returning value
             foreach ($this->metaProperties as $metaName => $origName) {
                 $value = $attribute->getDataUsingMethod($origName);
-                $meta[$code]['arguments']['data']['config'][$metaName] = ($metaName === 'label') ? __($value) : $value;
+                if ($metaName === 'label') {
+                    $meta[$code]['arguments']['data']['config'][$metaName] = __($value);
+                    $meta[$code]['arguments']['data']['config']['__disableTmpl'] = [$metaName => true];
+                } else {
+                    $meta[$code]['arguments']['data']['config'][$metaName] = $value;
+                }
                 if ('frontend_input' === $origName) {
                     $meta[$code]['arguments']['data']['config']['formElement'] = isset($this->formElement[$value])
                         ? $this->formElement[$value]
@@ -284,7 +362,14 @@ class DataProvider extends \Magento\Ui\DataProvider\AbstractDataProvider
                     $meta[$code]['arguments']['data']['config']['options'] = $this->getCountryWithWebsiteSource()
                         ->getAllOptions();
                 } else {
-                    $meta[$code]['arguments']['data']['config']['options'] = $attribute->getSource()->getAllOptions();
+                    $options = $attribute->getSource()->getAllOptions();
+                    array_walk(
+                        $options,
+                        function (&$item) {
+                            $item['__disableTmpl'] = ['label' => true];
+                        }
+                    );
+                    $meta[$code]['arguments']['data']['config']['options'] = $options;
                 }
             }
 
@@ -296,13 +381,8 @@ class DataProvider extends \Magento\Ui\DataProvider\AbstractDataProvider
             $meta[$code]['arguments']['data']['config']['componentType'] = Field::NAME;
             $meta[$code]['arguments']['data']['config']['visible'] = $this->canShowAttribute($attribute);
 
-            $this->fileUploaderDataResolver->overrideFileUploaderMetadata(
-                $entityType,
-                $attribute,
-                $meta[$code]['arguments']['data']['config']
-            );
+            $this->overrideFileUploaderMetadata($entityType, $attribute, $meta[$code]['arguments']['data']['config']);
         }
-
         $this->processWebsiteMeta($meta);
         return $meta;
     }
@@ -324,7 +404,7 @@ class DataProvider extends \Magento\Ui\DataProvider\AbstractDataProvider
      * Retrieve Country With Websites Source
      *
      * @return CountryWithWebsites
-     * @deprecated 101.0.0
+     * @deprecated 100.2.0
      */
     private function getCountryWithWebsiteSource()
     {
@@ -371,6 +451,98 @@ class DataProvider extends \Magento\Ui\DataProvider\AbstractDataProvider
     }
 
     /**
+     * Override file uploader UI component metadata
+     *
+     * Overrides metadata for attributes with frontend_input equal to 'image' or 'file'.
+     *
+     * @param Type $entityType
+     * @param AbstractAttribute $attribute
+     * @param array $config
+     * @return void
+     */
+    private function overrideFileUploaderMetadata(
+        Type $entityType,
+        AbstractAttribute $attribute,
+        array &$config
+    ) {
+        if (in_array($attribute->getFrontendInput(), $this->fileUploaderTypes)) {
+            $maxFileSize = self::MAX_FILE_SIZE;
+
+            if (isset($config['validation']['max_file_size'])) {
+                $maxFileSize = (int)$config['validation']['max_file_size'];
+            }
+
+            $allowedExtensions = [];
+
+            if (isset($config['validation']['file_extensions'])) {
+                $allowedExtensions = explode(',', $config['validation']['file_extensions']);
+                array_walk($allowedExtensions, function (&$value) {
+                    $value = strtolower(trim($value));
+                });
+            }
+
+            $allowedExtensions = implode(' ', $allowedExtensions);
+
+            $entityTypeCode = $entityType->getEntityTypeCode();
+            $url = $this->getFileUploadUrl($entityTypeCode);
+
+            $config = [
+                'dataType' => $this->getMetadataValue($config, 'dataType'),
+                'formElement' => 'fileUploader',
+                'componentType' => 'fileUploader',
+                'maxFileSize' => $maxFileSize,
+                'allowedExtensions' => $allowedExtensions,
+                'uploaderConfig' => [
+                    'url' => $url,
+                ],
+                'label' => $this->getMetadataValue($config, 'label'),
+                'sortOrder' => $this->getMetadataValue($config, 'sortOrder'),
+                'required' => $this->getMetadataValue($config, 'required'),
+                'visible' => $this->getMetadataValue($config, 'visible'),
+                'validation' => $this->getMetadataValue($config, 'validation'),
+            ];
+        }
+    }
+
+    /**
+     * Retrieve metadata value
+     *
+     * @param array $config
+     * @param string $name
+     * @param mixed $default
+     * @return mixed
+     */
+    private function getMetadataValue($config, $name, $default = null)
+    {
+        $value = isset($config[$name]) ? $config[$name] : $default;
+        return $value;
+    }
+
+    /**
+     * Retrieve URL to file upload
+     *
+     * @param string $entityTypeCode
+     * @return string
+     */
+    private function getFileUploadUrl($entityTypeCode)
+    {
+        switch ($entityTypeCode) {
+            case CustomerMetadataInterface::ENTITY_TYPE_CUSTOMER:
+                $url = 'customer/file/customer_upload';
+                break;
+
+            case AddressMetadataInterface::ENTITY_TYPE_ADDRESS:
+                $url = 'customer/file/address_upload';
+                break;
+
+            default:
+                $url = '';
+                break;
+        }
+        return $url;
+    }
+
+    /**
      * Process attributes by frontend input type
      *
      * @param AttributeInterface $attribute
@@ -413,10 +585,25 @@ class DataProvider extends \Magento\Ui\DataProvider\AbstractDataProvider
         foreach ($this->meta['address']['children'] as $attributeName => $attributeMeta) {
             if ($attributeMeta['arguments']['data']['config']['dataType'] === Multiline::NAME
                 && isset($addresses[$addressId][$attributeName])
-                && !is_array($addresses[$addressId][$attributeName])
+                && !\is_array($addresses[$addressId][$attributeName])
             ) {
                 $addresses[$addressId][$attributeName] = explode("\n", $addresses[$addressId][$attributeName]);
             }
         }
+    }
+
+    /**
+     * Get FileProcessorFactory instance
+     *
+     * @return FileProcessorFactory
+     * @deprecated 100.1.3
+     */
+    private function getFileProcessorFactory()
+    {
+        if ($this->fileProcessorFactory === null) {
+            $this->fileProcessorFactory = ObjectManager::getInstance()
+                ->get(\Magento\Customer\Model\FileProcessorFactory::class);
+        }
+        return $this->fileProcessorFactory;
     }
 }

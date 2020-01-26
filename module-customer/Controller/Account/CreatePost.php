@@ -6,20 +6,14 @@
 namespace Magento\Customer\Controller\Account;
 
 use Magento\Customer\Api\CustomerRepositoryInterface as CustomerRepository;
-use Magento\Framework\App\Action\HttpPostActionInterface as HttpPostActionInterface;
 use Magento\Customer\Model\Account\Redirect as AccountRedirect;
 use Magento\Customer\Api\Data\AddressInterface;
 use Magento\Framework\Api\DataObjectHelper;
 use Magento\Framework\App\Action\Context;
 use Magento\Customer\Model\Session;
 use Magento\Framework\App\Config\ScopeConfigInterface;
-use Magento\Framework\App\CsrfAwareActionInterface;
 use Magento\Framework\App\ObjectManager;
-use Magento\Framework\App\Request\InvalidRequestException;
-use Magento\Framework\App\RequestInterface;
-use Magento\Framework\Controller\Result\Redirect;
 use Magento\Framework\Exception\LocalizedException;
-use Magento\Framework\Phrase;
 use Magento\Store\Model\StoreManagerInterface;
 use Magento\Customer\Api\AccountManagementInterface;
 use Magento\Customer\Helper\Address;
@@ -36,7 +30,6 @@ use Magento\Customer\Model\CustomerExtractor;
 use Magento\Framework\Exception\StateException;
 use Magento\Framework\Exception\InputException;
 use Magento\Framework\Data\Form\FormKey\Validator;
-use Magento\Customer\Controller\AbstractAccount;
 
 /**
  * Post create customer action
@@ -44,7 +37,7 @@ use Magento\Customer\Controller\AbstractAccount;
  * @SuppressWarnings(PHPMD.TooManyFields)
  * @SuppressWarnings(PHPMD.CouplingBetweenObjects)
  */
-class CreatePost extends AbstractAccount implements CsrfAwareActionInterface, HttpPostActionInterface
+class CreatePost extends \Magento\Customer\Controller\AbstractAccount
 {
     /**
      * @var \Magento\Customer\Api\AccountManagementInterface
@@ -184,7 +177,7 @@ class CreatePost extends AbstractAccount implements CsrfAwareActionInterface, Ht
         CustomerExtractor $customerExtractor,
         DataObjectHelper $dataObjectHelper,
         AccountRedirect $accountRedirect,
-        CustomerRepository $customerRepository,
+        CustomerRepository $customerRepository = null,
         Validator $formKeyValidator = null
     ) {
         $this->session = $customerSession;
@@ -205,7 +198,7 @@ class CreatePost extends AbstractAccount implements CsrfAwareActionInterface, Ht
         $this->dataObjectHelper = $dataObjectHelper;
         $this->accountRedirect = $accountRedirect;
         $this->formKeyValidator = $formKeyValidator ?: ObjectManager::getInstance()->get(Validator::class);
-        $this->customerRepository = $customerRepository;
+        $this->customerRepository = $customerRepository ?: ObjectManager::getInstance()->get(CustomerRepository::class);
         parent::__construct($context);
     }
 
@@ -292,31 +285,6 @@ class CreatePost extends AbstractAccount implements CsrfAwareActionInterface, Ht
     }
 
     /**
-     * @inheritDoc
-     */
-    public function createCsrfValidationException(
-        RequestInterface $request
-    ): ?InvalidRequestException {
-        /** @var Redirect $resultRedirect */
-        $resultRedirect = $this->resultRedirectFactory->create();
-        $url = $this->urlModel->getUrl('*/*/create', ['_secure' => true]);
-        $resultRedirect->setUrl($this->_redirect->error($url));
-
-        return new InvalidRequestException(
-            $resultRedirect,
-            [new Phrase('Invalid Form Key. Please refresh the page.')]
-        );
-    }
-
-    /**
-     * @inheritDoc
-     */
-    public function validateForCsrf(RequestInterface $request): ?bool
-    {
-        return null;
-    }
-
-    /**
      * Create customer account action
      *
      * @return void
@@ -325,19 +293,17 @@ class CreatePost extends AbstractAccount implements CsrfAwareActionInterface, Ht
      */
     public function execute()
     {
-        /** @var Redirect $resultRedirect */
+        /** @var \Magento\Framework\Controller\Result\Redirect $resultRedirect */
         $resultRedirect = $this->resultRedirectFactory->create();
         if ($this->session->isLoggedIn() || !$this->registration->isAllowed()) {
             $resultRedirect->setPath('*/*/');
             return $resultRedirect;
         }
 
-        if (!$this->getRequest()->isPost()
-            || !$this->formKeyValidator->validate($this->getRequest())
-        ) {
+        if (!$this->getRequest()->isPost() || !$this->formKeyValidator->validate($this->getRequest())) {
             $url = $this->urlModel->getUrl('*/*/create', ['_secure' => true]);
-            return $this->resultRedirectFactory->create()
-                ->setUrl($this->_redirect->error($url));
+            $resultRedirect->setUrl($this->_redirect->error($url));
+            return $resultRedirect;
         }
         $this->session->regenerateId();
         try {
@@ -415,7 +381,8 @@ class CreatePost extends AbstractAccount implements CsrfAwareActionInterface, Ht
 
         $this->session->setCustomerFormData($this->getRequest()->getPostValue());
         $defaultUrl = $this->urlModel->getUrl('*/*/create', ['_secure' => true]);
-        return $resultRedirect->setUrl($this->_redirect->error($defaultUrl));
+        $resultRedirect->setUrl($this->_redirect->error($defaultUrl));
+        return $resultRedirect;
     }
 
     /**

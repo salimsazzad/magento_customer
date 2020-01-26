@@ -41,7 +41,7 @@ class Taxvat extends AbstractWidget
     public function _construct()
     {
         parent::_construct();
-        $this->setTemplate('Magento_Customer::widget/taxvat.phtml');
+        $this->setTemplate('widget/taxvat.phtml');
     }
 
     /**
@@ -62,18 +62,5 @@ class Taxvat extends AbstractWidget
     public function isRequired()
     {
         return $this->_getAttribute('taxvat') ? (bool)$this->_getAttribute('taxvat')->isRequired() : false;
-    }
-
-    /**
-     * Retrieve store attribute label
-     *
-     * @param string $attributeCode
-     *
-     * @return string
-     */
-    public function getStoreLabel($attributeCode)
-    {
-        $attribute = $this->_getAttribute($attributeCode);
-        return $attribute ? __($attribute->getStoreLabel()) : '';
     }
 }

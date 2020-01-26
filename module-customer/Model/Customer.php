@@ -3,7 +3,6 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
-
 namespace Magento\Customer\Model;
 
 use Magento\Customer\Api\CustomerMetadataInterface;
@@ -221,13 +220,6 @@ class Customer extends \Magento\Framework\Model\AbstractModel
     private $accountConfirmation;
 
     /**
-     * Caching property to store customer address data models by the address ID.
-     *
-     * @var array
-     */
-    private $storedAddress;
-
-    /**
      * @param \Magento\Framework\Model\Context $context
      * @param \Magento\Framework\Registry $registry
      * @param \Magento\Store\Model\StoreManagerInterface $storeManager
@@ -325,10 +317,7 @@ class Customer extends \Magento\Framework\Model\AbstractModel
         $addressesData = [];
         /** @var \Magento\Customer\Model\Address $address */
         foreach ($this->getAddresses() as $address) {
-            if (!isset($this->storedAddress[$address->getId()])) {
-                $this->storedAddress[$address->getId()] = $address->getDataModel();
-            }
-            $addressesData[] = $this->storedAddress[$address->getId()];
+            $addressesData[] = $address->getDataModel();
         }
         $customerDataObject = $this->customerDataFactory->create();
         $this->dataObjectHelper->populateWithArray(
@@ -400,7 +389,7 @@ class Customer extends \Magento\Framework\Model\AbstractModel
         $this->loadByEmail($login);
         if ($this->getConfirmation() && $this->isConfirmationRequired()) {
             throw new EmailNotConfirmedException(
-                __("This account isn't confirmed. Verify and try again.")
+                __('This account is not confirmed.')
             );
         }
         if (!$this->validatePassword($password)) {
@@ -770,7 +759,7 @@ class Customer extends \Magento\Framework\Model\AbstractModel
 
         if (!isset($types[$type])) {
             throw new \Magento\Framework\Exception\LocalizedException(
-                __('The transactional account email type is incorrect. Verify and try again.')
+                __('Please correct the transactional account email type.')
             );
         }
 
@@ -792,7 +781,7 @@ class Customer extends \Magento\Framework\Model\AbstractModel
      * Check if accounts confirmation is required in config
      *
      * @return bool
-     * @deprecated 101.0.4
+     * @deprecated
      * @see AccountConfirmation::isConfirmationRequired
      */
     public function isConfirmationRequired()
@@ -972,7 +961,6 @@ class Customer extends \Magento\Framework\Model\AbstractModel
      * Retrieve attribute set id for customer.
      *
      * @return int
-     * @since 102.0.1
      */
     public function getAttributeSetId()
     {
@@ -1057,6 +1045,17 @@ class Customer extends \Magento\Framework\Model\AbstractModel
     {
         $this->_errors = [];
         return $this;
+    }
+
+    /**
+     * Prepare customer for delete
+     *
+     * @return $this
+     */
+    public function beforeDelete()
+    {
+        //TODO : Revisit and figure handling permissions in MAGETWO-11084 Implementation: Service Context Provider
+        return parent::beforeDelete();
     }
 
     /**
@@ -1172,7 +1171,7 @@ class Customer extends \Magento\Framework\Model\AbstractModel
      * Check whether confirmation may be skipped when registering using certain email address
      *
      * @return bool
-     * @deprecated 101.0.4
+     * @deprecated
      * @see AccountConfirmation::isConfirmationRequired
      */
     protected function canSkipConfirmation()
@@ -1248,7 +1247,7 @@ class Customer extends \Magento\Framework\Model\AbstractModel
     {
         if (!is_string($passwordLinkToken) || empty($passwordLinkToken)) {
             throw new AuthenticationException(
-                __('A valid password reset token is missing. Enter and try again.')
+                __('Please enter a valid password reset token.')
             );
         }
         $this->_getResource()->changeResetPasswordLinkToken($this, $passwordLinkToken);
@@ -1299,8 +1298,6 @@ class Customer extends \Magento\Framework\Model\AbstractModel
     }
 
     /**
-     * Create Address from Factory
-     *
      * @return Address
      */
     protected function _createAddressInstance()
@@ -1309,8 +1306,6 @@ class Customer extends \Magento\Framework\Model\AbstractModel
     }
 
     /**
-     * Create Address Collection from Factory
-     *
      * @return \Magento\Customer\Model\ResourceModel\Address\Collection
      */
     protected function _createAddressCollection()
@@ -1319,8 +1314,6 @@ class Customer extends \Magento\Framework\Model\AbstractModel
     }
 
     /**
-     * Get Template Types
-     *
      * @return array
      */
     protected function getTemplateTypes()

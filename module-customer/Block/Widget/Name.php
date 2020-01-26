@@ -55,14 +55,14 @@ class Name extends AbstractWidget
     }
 
     /**
-     * @inheritdoc
+     * @return void
      */
     public function _construct()
     {
         parent::_construct();
 
         // default template location
-        $this->setTemplate('Magento_Customer::widget/name.phtml');
+        $this->setTemplate('widget/name.phtml');
     }
 
     /**
@@ -201,7 +201,7 @@ class Name extends AbstractWidget
     }
 
     /**
-     * @inheritdoc
+     * {@inheritdoc}
      */
     protected function _getAttribute($attributeCode)
     {
@@ -246,6 +246,7 @@ class Name extends AbstractWidget
     public function getAttributeValidationClass($attributeCode)
     {
         $attributeMetadata = $this->_getAttribute($attributeCode);
+
         return $attributeMetadata ? $attributeMetadata->getFrontendClass() : '';
     }
 

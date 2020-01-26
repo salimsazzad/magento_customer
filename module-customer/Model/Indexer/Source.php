@@ -113,21 +113,15 @@ class Source implements \IteratorAggregate, \Countable, SourceProviderInterface
      * @param string $alias alias for the joined attribute
      * @param string|\Magento\Eav\Model\Entity\Attribute\AbstractAttribute $attribute
      * @param string $bind attribute of the main entity to link with joined $filter
-     * @param string|null $filter primary key for the joined entity (entity_id default)
+     * @param string $filter primary key for the joined entity (entity_id default)
      * @param string $joinType inner|left
      * @param int|null $storeId
      * @return void
      * @throws \Magento\Framework\Exception\LocalizedException
      * @see Collection::joinAttribute()
      */
-    public function joinAttribute(
-        string $alias,
-        $attribute,
-        string $bind,
-        ?string $filter = null,
-        string $joinType = 'inner',
-        ?int $storeId = null
-    ): void {
+    public function joinAttribute($alias, $attribute, $bind, $filter = null, $joinType = 'inner', $storeId = null)
+    {
         $this->customerCollection->joinAttribute($alias, $attribute, $bind, $filter, $joinType, $storeId);
     }
 }

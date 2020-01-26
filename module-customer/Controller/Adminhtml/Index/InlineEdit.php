@@ -11,17 +11,15 @@ use Magento\Customer\Api\Data\CustomerInterface;
 use Magento\Customer\Model\AddressRegistry;
 use Magento\Customer\Model\EmailNotificationInterface;
 use Magento\Customer\Ui\Component\Listing\AttributeRepository;
-use Magento\Framework\App\Action\HttpPostActionInterface;
-use Magento\Framework\Exception\NoSuchEntityException;
 use Magento\Framework\Message\MessageInterface;
 use Magento\Framework\App\ObjectManager;
 
 /**
- * Customer inline edit action
+ * Customer inline edit action.
  *
  * @SuppressWarnings(PHPMD.CouplingBetweenObjects)
  */
-class InlineEdit extends \Magento\Backend\App\Action implements HttpPostActionInterface
+class InlineEdit extends \Magento\Backend\App\Action
 {
     /**
      * Authorization level of a basic admin session
@@ -126,8 +124,6 @@ class InlineEdit extends \Magento\Backend\App\Action implements HttpPostActionIn
      * Inline edit action execute
      *
      * @return \Magento\Framework\Controller\Result\Json
-     * @throws \Magento\Framework\Exception\LocalizedException
-     * @throws \Magento\Framework\Exception\NoSuchEntityException
      */
     public function execute()
     {
@@ -135,15 +131,11 @@ class InlineEdit extends \Magento\Backend\App\Action implements HttpPostActionIn
         $resultJson = $this->resultJsonFactory->create();
 
         $postItems = $this->getRequest()->getParam('items', []);
-        if (!($this->getRequest()->getParam('isAjax') && count($postItems))) {
-            return $resultJson->setData(
-                [
-                    'messages' => [
-                        __('Please correct the data sent.')
-                    ],
-                    'error' => true,
-                ]
-            );
+        if (!($this->getRequest()->getParam('isAjax') && $this->getRequest()->isPost() && count($postItems))) {
+            return $resultJson->setData([
+                'messages' => [__('Please correct the data sent.')],
+                'error' => true,
+            ]);
         }
 
         foreach (array_keys($postItems) as $customerId) {
@@ -159,19 +151,17 @@ class InlineEdit extends \Magento\Backend\App\Action implements HttpPostActionIn
             $this->getEmailNotification()->credentialsChanged($this->getCustomer(), $currentCustomer->getEmail());
         }
 
-        return $resultJson->setData(
-            [
-                'messages' => $this->getErrorMessages(),
-                'error' => $this->isErrorExists()
-            ]
-        );
+        return $resultJson->setData([
+            'messages' => $this->getErrorMessages(),
+            'error' => $this->isErrorExists()
+        ]);
     }
 
     /**
      * Receive entity(customer|customer_address) data from request
      *
      * @param array $data
-     * @param mixed $isCustomerData
+     * @param null $isCustomerData
      * @return array
      */
     protected function getData(array $data, $isCustomerData = null)
@@ -236,7 +226,7 @@ class InlineEdit extends \Magento\Backend\App\Action implements HttpPostActionIn
     }
 
     /**
-     * Save customer with error catching
+     * Save customer with error catching.
      *
      * @param CustomerInterface $customer
      * @return void
@@ -336,12 +326,12 @@ class InlineEdit extends \Magento\Backend\App\Action implements HttpPostActionIn
     }
 
     /**
-     * Disable Customer Address Validation
+     * Disable Customer Address Validation.
      *
      * @param CustomerInterface $customer
-     * @throws NoSuchEntityException
+     * @return void
      */
-    private function disableAddressValidation($customer)
+    private function disableAddressValidation(CustomerInterface $customer)
     {
         foreach ($customer->getAddresses() as $address) {
             $addressModel = $this->addressRegistry->retrieve($address->getId());

@@ -17,7 +17,7 @@ use Magento\Framework\Reflection\DataObjectProcessor;
 use Magento\Framework\Exception\LocalizedException;
 
 /**
- * Customer email notification
+ * Class for notification customer.
  *
  * @SuppressWarnings(PHPMD.CouplingBetweenObjects)
  */
@@ -64,6 +64,8 @@ class EmailNotification implements EmailNotificationInterface
         self::NEW_ACCOUNT_EMAIL_CONFIRMED => self::XML_PATH_CONFIRMED_EMAIL_TEMPLATE,
         self::NEW_ACCOUNT_EMAIL_CONFIRMATION => self::XML_PATH_CONFIRM_EMAIL_TEMPLATE,
     ];
+
+    const CUSTOMER_CONFIRM_URL = 'customer/account/confirm/';
 
     /**#@-*/
 
@@ -362,8 +364,9 @@ class EmailNotification implements EmailNotificationInterface
      * @param CustomerInterface $customer
      * @param string $type
      * @param string $backUrl
-     * @param int $storeId
+     * @param string $storeId
      * @param string $sendemailStoreId
+     * @param array $extensions
      * @return void
      * @throws LocalizedException
      */
@@ -372,14 +375,13 @@ class EmailNotification implements EmailNotificationInterface
         $type = self::NEW_ACCOUNT_EMAIL_REGISTERED,
         $backUrl = '',
         $storeId = 0,
-        $sendemailStoreId = null
+        $sendemailStoreId = null,
+        $extensions = []
     ) {
         $types = self::TEMPLATE_TYPES;
 
         if (!isset($types[$type])) {
-            throw new LocalizedException(
-                __('The transactional account email type is incorrect. Verify and try again.')
-            );
+            throw new LocalizedException(__('Please correct the transactional account email type.'));
         }
 
         if (!$storeId) {
@@ -390,11 +392,26 @@ class EmailNotification implements EmailNotificationInterface
 
         $customerEmailData = $this->getFullCustomerObject($customer);
 
+        $templateVars = [
+            'customer' => $customerEmailData,
+            'back_url' => $backUrl,
+            'store' => $store,
+        ];
+        if ($type == self::NEW_ACCOUNT_EMAIL_CONFIRMATION) {
+            if (empty($extensions)) {
+                $templateVars['url'] = self::CUSTOMER_CONFIRM_URL;
+                $templateVars['extensions'] = $extensions;
+            } else {
+                $templateVars['url'] = $extensions['url'];
+                $templateVars['extensions'] = $extensions['extension_info'];
+            }
+        }
+
         $this->sendEmailTemplate(
             $customer,
             $types[$type],
             self::XML_PATH_REGISTER_EMAIL_IDENTITY,
-            ['customer' => $customerEmailData, 'back_url' => $backUrl, 'store' => $store],
+            $templateVars,
             $storeId
         );
     }

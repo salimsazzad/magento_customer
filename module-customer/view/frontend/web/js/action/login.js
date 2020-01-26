@@ -31,18 +31,18 @@ define([
                 if (response.errors) {
                     messageContainer.addErrorMessage(response);
                     callbacks.forEach(function (callback) {
-                        callback(loginData);
+                        callback(loginData, response);
                     });
                 } else {
                     callbacks.forEach(function (callback) {
-                        callback(loginData);
+                        callback(loginData, response);
                     });
                     customerData.invalidate(['customer']);
 
-                    if (response.redirectUrl) {
-                        window.location.href = response.redirectUrl;
-                    } else if (redirectUrl) {
+                    if (redirectUrl) {
                         window.location.href = redirectUrl;
+                    } else if (response.redirectUrl) {
+                        window.location.href = response.redirectUrl;
                     } else {
                         location.reload();
                     }

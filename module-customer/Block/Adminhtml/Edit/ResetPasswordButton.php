@@ -13,8 +13,6 @@ use Magento\Framework\View\Element\UiComponent\Control\ButtonProviderInterface;
 class ResetPasswordButton extends GenericButton implements ButtonProviderInterface
 {
     /**
-     * Retrieve button-specified settings
-     *
      * @return array
      */
     public function getButtonData()
@@ -27,15 +25,12 @@ class ResetPasswordButton extends GenericButton implements ButtonProviderInterfa
                 'class' => 'reset reset-password',
                 'on_click' => sprintf("location.href = '%s';", $this->getResetPasswordUrl()),
                 'sort_order' => 60,
-                'aclResource' => 'Magento_Customer::reset_password',
             ];
         }
         return $data;
     }
 
     /**
-     * Get reset password url
-     *
      * @return string
      */
     public function getResetPasswordUrl()

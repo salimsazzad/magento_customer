@@ -4,69 +4,61 @@
  * See COPYING.txt for license details.
  */
 
-namespace Magento\Customer\Setup\Patch\Data;
+namespace Magento\Customer\Setup;
 
-use Magento\Customer\Setup\CustomerSetup;
-use Magento\Customer\Setup\CustomerSetupFactory;
 use Magento\Framework\Module\Setup\Migration;
+use Magento\Framework\Setup\InstallDataInterface;
+use Magento\Framework\Setup\ModuleContextInterface;
 use Magento\Framework\Setup\ModuleDataSetupInterface;
-use Magento\Framework\App\ResourceConnection;
-use Magento\Framework\Setup\Patch\DataPatchInterface;
-use Magento\Framework\Setup\Patch\PatchVersionInterface;
 
 /**
- * Class DefaultCustomerGroupsAndAttributes
- * @package Magento\Customer\Setup\Patch
+ * @codeCoverageIgnore
  */
-class DefaultCustomerGroupsAndAttributes implements DataPatchInterface, PatchVersionInterface
+class InstallData implements InstallDataInterface
 {
     /**
+     * Customer setup factory
+     *
      * @var CustomerSetupFactory
      */
     private $customerSetupFactory;
 
     /**
-     * @var ModuleDataSetupInterface
-     */
-    private $moduleDataSetup;
-
-    /**
-     * DefaultCustomerGroupsAndAttributes constructor.
+     * Init
+     *
      * @param CustomerSetupFactory $customerSetupFactory
-     * @param ModuleDataSetupInterface $moduleDataSetup
      */
-    public function __construct(
-        CustomerSetupFactory $customerSetupFactory,
-        \Magento\Framework\Setup\ModuleDataSetupInterface $moduleDataSetup
-    ) {
+    public function __construct(CustomerSetupFactory $customerSetupFactory)
+    {
         $this->customerSetupFactory = $customerSetupFactory;
-        $this->moduleDataSetup = $moduleDataSetup;
     }
 
     /**
      * {@inheritdoc}
      * @SuppressWarnings(PHPMD.ExcessiveMethodLength)
      */
-    public function apply()
+    public function install(ModuleDataSetupInterface $setup, ModuleContextInterface $context)
     {
         /** @var CustomerSetup $customerSetup */
-        $customerSetup = $this->customerSetupFactory->create(['setup' => $this->moduleDataSetup]);
+        $customerSetup = $this->customerSetupFactory->create(['setup' => $setup]);
+
+        $setup->startSetup();
 
         // insert default customer groups
-        $this->moduleDataSetup->getConnection()->insertForce(
-            $this->moduleDataSetup->getTable('customer_group'),
+        $setup->getConnection()->insertForce(
+            $setup->getTable('customer_group'),
             ['customer_group_id' => 0, 'customer_group_code' => 'NOT LOGGED IN', 'tax_class_id' => 3]
         );
-        $this->moduleDataSetup->getConnection()->insertForce(
-            $this->moduleDataSetup->getTable('customer_group'),
+        $setup->getConnection()->insertForce(
+            $setup->getTable('customer_group'),
             ['customer_group_id' => 1, 'customer_group_code' => 'General', 'tax_class_id' => 3]
         );
-        $this->moduleDataSetup->getConnection()->insertForce(
-            $this->moduleDataSetup->getTable('customer_group'),
+        $setup->getConnection()->insertForce(
+            $setup->getTable('customer_group'),
             ['customer_group_id' => 2, 'customer_group_code' => 'Wholesale', 'tax_class_id' => 3]
         );
-        $this->moduleDataSetup->getConnection()->insertForce(
-            $this->moduleDataSetup->getTable('customer_group'),
+        $setup->getConnection()->insertForce(
+            $setup->getTable('customer_group'),
             ['customer_group_id' => 3, 'customer_group_code' => 'Retailer', 'tax_class_id' => 3]
         );
 
@@ -136,7 +128,7 @@ class DefaultCustomerGroupsAndAttributes implements DataPatchInterface, PatchVer
             \Magento\Eav\Model\Entity\Attribute\Backend\DefaultBackend::class
         );
 
-        $migrationSetup = $this->moduleDataSetup->createMigrationSetup();
+        $migrationSetup = $setup->createMigrationSetup();
 
         $migrationSetup->appendClassAliasReplace(
             'customer_eav_attribute',
@@ -146,29 +138,7 @@ class DefaultCustomerGroupsAndAttributes implements DataPatchInterface, PatchVer
             ['attribute_id']
         );
         $migrationSetup->doUpdateClassAliases();
-    }
 
-    /**
-     * {@inheritdoc}
-     */
-    public static function getDependencies()
-    {
-        return [];
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public static function getVersion()
-    {
-        return '2.0.0';
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function getAliases()
-    {
-        return [];
+        $setup->endSetup();
     }
 }
